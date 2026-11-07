@@ -1,0 +1,37 @@
+name: Build YoPlayer PKG
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Compilar PKG do PS3
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/work ps3dev/ps3toolchain:latest bash -c "
+            set -e
+            cd /work
+            ls -la
+            # Compila o EBOOT.BIN
+            make
+            # Gera o PARAM.SFO se não existir
+            if [ ! -f PARAM.SFO ]; then
+              make_package_npdrm --content-id UP0001-YOUP00001_00-YOPLAYER00000001 --sfo PARAM.SFO --title 'Yo! Player' --appid YOUP00001
+            fi
+            # Empacota tudo
+            make_package_npdrm --content-id UP0001-YOUP00001_00-YOPLAYER00000001 --package YoPlayer.pkg PARAM.SFO EBOOT.BIN ICON0.PNG
+            ls -lh *.pkg
+          "
+
+      - name: Salvar o PKG pronto
+        uses: actions/upload-artifact@v4
+        with:
+          name: YoPlayer-pkg
+          path: YoPlayer.pkg
+          if-no-files-found: error
